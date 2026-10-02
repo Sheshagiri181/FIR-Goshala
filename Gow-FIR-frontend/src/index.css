@@ -1,0 +1,25 @@
+:root {
+  --paper: #f4f5ef;
+  --ink: #26372d;
+  --forest: #46694d;
+  --clay: #b8794a;
+  --line: #e1e3da;
+  --sans: 'DM Sans', 'Segoe UI', sans-serif;
+  --display: 'Manrope', 'Segoe UI', sans-serif;
+  --mono: 'SFMono-Regular', Consolas, monospace;
+  font-family: var(--sans);
+  color: var(--ink);
+  background: var(--paper);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-weight: 400;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; }
+button, input, textarea { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #739078; outline-offset: 2px; }
+#root { min-height: 100vh; }
