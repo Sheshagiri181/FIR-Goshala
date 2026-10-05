@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm ci && npm --prefix Gow-FIR-frontend ci",
+  "installCommand": "npm ci && cd Gow-FIR-frontend && npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "Gow-FIR-frontend/dist",
   "functions": {
