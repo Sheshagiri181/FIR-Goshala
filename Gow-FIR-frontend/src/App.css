@@ -100,7 +100,13 @@
 .record-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 9px; width: 100%; min-height: 82px; padding: 14px 17px; border: 0; border-bottom: 1px solid #eeefe9; border-left: 3px solid transparent; background: white; text-align: left; cursor: pointer; transition: background .15s ease; }
 .record-row:hover { background: #fafbf8; }
 .record-row.selected { border-left-color: var(--clay); background: #f7f8f3; }
+.record-row.important { background: #fff9db; }
+.record-row.important:hover { background: #fff4bf; }
+.record-row.important.selected { background: #fff4bf; border-left-color: #d7a125; }
 .record-stage { display: grid; place-items: center; width: 25px; height: 25px; margin-top: 1px; border: 1px solid #e5e7df; color: #818678; font: 700 9px var(--display); }
+.important-star, .important-badge { color: #d5a321; }
+.important-star { margin-right: 6px; font-size: 12px; }
+.important-badge { display: inline-block; margin-right: 8px; font-size: 16px; vertical-align: middle; }
 .record-row-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .record-row-main strong { overflow: hidden; color: #323a31; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .record-row-main small { overflow: hidden; color: #85877f; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
@@ -190,6 +196,7 @@
 .demo-hint strong { margin-bottom: 2px; font-size: 8px; letter-spacing: .9px; }
 .security-note { margin-top: 13px; color: #a0a097 !important; font-size: 9px !important; line-height: 1.45; }
 .form-error { color: #aa493b; font-size: 10px; }
+.save-error { margin-top: 12px; padding: 9px 10px; border: 1px solid #f0d5cf; background: #fff7f5; }
 .editor-backdrop { overflow-y: auto; place-items: start center; }
 .editor-card { width: min(100%, 760px); margin: auto; padding: 25px 28px 20px; }
 .editor-heading { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
@@ -200,7 +207,24 @@
 .form-section-label span { color: #777b70; font: 800 9px var(--sans); letter-spacing: 1px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 14px; }
 .optional-label { margin-top: -3px; color: #999b91; font-size: 7px; letter-spacing: .7px; }
+.checkbox-row { display: flex !important; flex-direction: row !important; align-items: center; gap: 8px; min-height: 37px; padding: 8px 10px; border: 1px solid #dfe2d9; background: #fafcf8; }
+.checkbox-row input { width: auto; min-height: auto; }
 .record-form textarea { resize: vertical; min-height: 56px; }
+.follow-up-block { display: flex; flex-direction: column; gap: 8px; padding: 10px 11px; border: 1px solid #e5e7df; background: #fafcf9; }
+.follow-up-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #5d6459; font-size: 10px; font-weight: 700; }
+.follow-up-header > span { display: inline-flex; align-items: center; gap: 5px; }
+.tiny-button { min-height: 30px; padding: 0 10px; font-size: 9px; }
+.tiny-button:disabled { opacity: .5; cursor: not-allowed; }
+.follow-up-list { display: flex; flex-direction: column; gap: 8px; }
+.follow-up-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 28px; align-items: center; gap: 8px; }
+.follow-up-item { display: grid; grid-template-columns: minmax(0, 1fr) 28px; align-items: center; gap: 8px; }
+.follow-up-columns { color: #777b70; font-size: 9px; font-weight: 700; }
+.follow-up-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; min-width: 0; }
+.follow-up-fields input { min-width: 0; }
+.remove-follow-up { width: 28px; min-width: 28px; height: 28px; border: 1px solid #e2e5dc; background: white; color: #7d8279; cursor: pointer; font-size: 16px; line-height: 1; }
+.follow-up-limit { color: #8a8d84; font-size: 9px; }
+.follow-up-row dt { display: block; margin-bottom: 4px; }
+.follow-up-row dd { text-align: left; }
 .span-two { grid-column: span 2; }
 .form-footer { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 19px; padding-top: 14px; border-top: 1px solid var(--line); }
 .form-footer > span { color: #85877e; font-size: 9px; }

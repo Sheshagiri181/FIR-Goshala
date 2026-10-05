@@ -1,7 +1,16 @@
 {
+  "name": "fir-goshala",
+  "private": true,
+  "scripts": {
+    "start": "node server/index.cjs",
+    "dev:server": "node --watch server/index.cjs"
+  },
   "dependencies": {
     "axios": "^1.20.0",
     "bootstrap": "^5.3.8",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0",
+    "mongoose": "^8.12.1",
     "react-router-dom": "^7.18.4"
   }
 }
