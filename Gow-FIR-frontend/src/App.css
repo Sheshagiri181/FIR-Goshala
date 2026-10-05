@@ -245,6 +245,7 @@
   .summary-grid { grid-template-columns: 1fr 1fr 1.15fr; }
   .summary-aside { display: none; }
 }
+
 @media (max-width: 760px) {
   .topbar { height: 64px; padding-inline: 18px; }
   .topbar-right { gap: 12px; }
