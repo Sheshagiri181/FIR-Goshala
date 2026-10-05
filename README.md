@@ -15,6 +15,19 @@ The browser talks to the Express API; the API connects to MongoDB Atlas. Keep th
 
 The API connects to Atlas before it starts listening. Check `http://localhost:3001/api/health` to confirm the database connection. The Vite dev server proxies `/api` requests to the API.
 
+## Deploy to Vercel
+
+The Vercel project must use the repository root (`./`) as its **Root Directory**, not `Gow-FIR-frontend`. The root `vercel.json` builds the frontend in `Gow-FIR-frontend` and registers the `/api/*` serverless function.
+
+Add these environment variables in Vercel under **Project Settings → Environment Variables** for each deployment environment:
+
+- `MONGODB_URI`
+- `STAFF_USERNAME`
+- `STAFF_PASSWORD`
+- `STAFF_TOKEN_SECRET` (at least 32 characters)
+
+Use the rotated Atlas database password, keep the Atlas URI private, and allow Atlas network access from Vercel (or use the appropriate trusted network configuration for your deployment). Redeploy after changing environment variables. Once deployed, check `<your-deployment-url>/api/health`; it should return `{"status":"ok"}`.
+
 Existing records previously saved in browser local storage are not automatically copied to Atlas. They remain in that browser's storage; plan a migration before removing or clearing the old browser data.
 
 ## Local frontend only

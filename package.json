@@ -2,6 +2,7 @@
   "name": "fir-goshala",
   "private": true,
   "scripts": {
+    "build": "npm --prefix Gow-FIR-frontend run build",
     "start": "node server/index.cjs",
     "dev:server": "node --watch server/index.cjs"
   },

@@ -65,6 +65,7 @@ const caseSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 const CaseRecord = mongoose.model('CaseRecord', caseSchema)
+let databaseConnectionPromise
 
 app.use(express.json({ limit: '64kb' }))
 
@@ -232,31 +233,50 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ error: 'The server could not complete the request.' })
 })
 
-async function start() {
+function validateEnvironment() {
   const requiredEnvironment = ['MONGODB_URI', 'STAFF_USERNAME', 'STAFF_PASSWORD', 'STAFF_TOKEN_SECRET']
   const missing = requiredEnvironment.filter((name) => !process.env[name])
   if (missing.length) {
-    console.error(`Missing required environment variables: ${missing.join(', ')}. Configure them in the root .env file.`)
-    process.exitCode = 1
-    return
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}.`)
   }
   if (process.env.STAFF_TOKEN_SECRET.length < 32) {
-    console.error('STAFF_TOKEN_SECRET must be at least 32 characters long.')
-    process.exitCode = 1
-    return
+    throw new Error('STAFF_TOKEN_SECRET must be at least 32 characters long.')
   }
+}
 
+async function connectDatabase() {
+  validateEnvironment()
+  if (mongoose.connection.readyState === 1) return
+  if (databaseConnectionPromise) return databaseConnectionPromise
+
+  databaseConnectionPromise = mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 })
   try {
-    await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 })
+    await databaseConnectionPromise
   } catch (error) {
-    console.error(`Could not connect to MongoDB Atlas (${error.name}). Check the URI, database user, and Atlas network access settings.`)
+    databaseConnectionPromise = null
+    throw error
+  }
+
+  return databaseConnectionPromise
+}
+
+async function start() {
+  try {
+    await connectDatabase()
+  } catch (error) {
+    if (error.message.startsWith('Missing required') || error.message.startsWith('STAFF_TOKEN_SECRET')) {
+      console.error(`${error.message} Configure the root .env file.`)
+    } else {
+      console.error(`Could not connect to MongoDB Atlas (${error.name}). Check the URI, database user, and Atlas network access settings.`)
+    }
     process.exitCode = 1
     return
   }
-
   app.listen(port, () => {
     console.log(`FIR Goshala API listening on http://localhost:${port}`)
   })
 }
 
-start()
+module.exports = { app, connectDatabase }
+
+if (require.main === module) start()

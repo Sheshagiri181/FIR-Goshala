@@ -1,0 +1,10 @@
+{
+  "installCommand": "npm ci && npm --prefix Gow-FIR-frontend ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "Gow-FIR-frontend/dist",
+  "functions": {
+    "api/[...path].js": {
+      "maxDuration": 30
+    }
+  }
+}

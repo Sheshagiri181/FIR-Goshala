@@ -55,7 +55,12 @@ async function apiRequest(path, options = {}) {
   } else if (!response.ok) {
     throw new Error(`API request failed with HTTP ${response.status}. Check that the backend and Atlas connection are running.`)
   }
-  if (!response.ok) throw new Error(result.error || `Request failed with status ${response.status}.`)
+  if (!response.ok) {
+    if (response.status === 404 && path.startsWith('/api/')) {
+      throw new Error('The API route is not deployed. In Vercel, set Root Directory to the repository root and redeploy.')
+    }
+    throw new Error(result.error || `Request failed with status ${response.status}.`)
+  }
   return result
 }
 
