@@ -1,22 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 
 const DAILY_RATE = 250
-
-async function apiRequest(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
-    ...options,
-    credentials: 'same-origin',
-    headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...options.headers,
-    },
-  })
-  if (response.status === 204) return null
-  const payload = await response.json().catch(() => ({}))
-  if (!response.ok) throw new Error(payload.error || `Request failed (${response.status}).`)
-  return payload
-}
+const STORAGE_KEY = 'goshala-fir-records'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const dateLabel = (value) => value
@@ -31,41 +17,46 @@ const amountFor = (record) => {
 }
 const money = (value) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
 const stageFor = (record) => record.finalOrderDate ? 3 : record.fieldDate ? 2 : 1
+const phoneDigits = (record) => `${record.goshalaPhone || ''} ${record.advocatePhone || ''}`.replace(/\D/g, '')
 
 function App() {
   const [currentDateLabel] = useState(() => new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }))
-  const [records, setRecords] = useState([])
+  const [records, setRecords] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    } catch {
+      return []
+    }
+  })
   const [selectedId, setSelectedId] = useState(null)
   const [query, setQuery] = useState('')
   const [stageFilter, setStageFilter] = useState('all')
   const [isStaff, setIsStaff] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [apiError, setApiError] = useState('')
   const [showLogin, setShowLogin] = useState(false)
   const [showEditor, setShowEditor] = useState(false)
   const [editingRecord, setEditingRecord] = useState(null)
   const [loginError, setLoginError] = useState('')
 
   useEffect(() => {
-    let isCurrent = true
-    Promise.all([apiRequest('/records'), apiRequest('/auth/session')])
-      .then(([recordData, sessionData]) => {
-        if (!isCurrent) return
-        setRecords(recordData.records)
-        setIsStaff(sessionData.authenticated)
-        setIsLoading(false)
-      })
-      .catch((error) => {
-        if (!isCurrent) return
-        setApiError(error.message)
-        setIsLoading(false)
-      })
-    return () => { isCurrent = false }
-  }, [])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records))
+  }, [records])
 
   const filteredRecords = useMemo(() => records
     .filter((record) => stageFilter === 'all' || stageFor(record) === Number(stageFilter))
-    .filter((record) => `${Object.values(record).join(' ')} ${dateLabel(record.firDate)} ${dateLabel(record.finalOrderDate)}`.toLowerCase().includes(query.trim().toLowerCase()))
+    .filter((record) => {
+      const normalizedQuery = query.trim().toLowerCase()
+      const phoneQuery = query.replace(/\D/g, '')
+      const searchableText = [
+        ...Object.values(record),
+        record.policeStation,
+        record.district,
+        record.goshalaPhone,
+        record.advocatePhone,
+        dateLabel(record.firDate),
+        dateLabel(record.finalOrderDate),
+      ].join(' ').toLowerCase()
+      return searchableText.includes(normalizedQuery) || (phoneQuery.length > 0 && phoneDigits(record).includes(phoneQuery))
+    })
     .sort((a, b) => b.firDate.localeCompare(a.firDate)), [records, query, stageFilter])
   const selectedRecord = filteredRecords.find((record) => record.id === selectedId) || filteredRecords[0]
   const activeCount = records.filter((record) => !record.finalOrderDate).length
@@ -77,7 +68,7 @@ function App() {
     setShowEditor(true)
   }
 
-  async function handleSave(event) {
+  function handleSave(event) {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
     const values = Object.fromEntries(formData.entries())
@@ -85,48 +76,29 @@ function App() {
       ...values,
       id: editingRecord?.id || `FIR-${values.firDate.slice(0, 4)}-${String(Date.now()).slice(-4)}`,
       cowCount: Number(values.cowCount),
+      finalOrderAmount: Number(values.finalOrderAmount || 0),
     }
-    try {
-      const result = await apiRequest(editingRecord ? `/records/${editingRecord.id}` : '/records', {
-        method: editingRecord ? 'PUT' : 'POST',
-        body: JSON.stringify(record),
-      })
-      const savedRecord = result.record
-      setRecords((currentRecords) => editingRecord
-        ? currentRecords.map((item) => item.id === savedRecord.id ? savedRecord : item)
-        : [savedRecord, ...currentRecords])
-      setSelectedId(savedRecord.id)
-      setApiError('')
-      setShowEditor(false)
-    } catch (error) {
-      setApiError(error.message)
-    }
+    setRecords((currentRecords) => editingRecord
+      ? currentRecords.map((item) => item.id === editingRecord.id ? record : item)
+      : [record, ...currentRecords])
+    setSelectedId(record.id)
+    setShowEditor(false)
   }
 
-  async function handleLogin(event) {
+  function handleLogin(event) {
     event.preventDefault()
     const formData = new FormData(event.currentTarget)
-    try {
-      await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ username: formData.get('username'), password: formData.get('password') }),
-      })
+    if (formData.get('username') === 'admin' && formData.get('password') === 'FIR2026') {
       setIsStaff(true)
       setShowLogin(false)
       setLoginError('')
-    } catch (error) {
-      setLoginError(error.message)
+    } else {
+      setLoginError('Incorrect username or password.')
     }
   }
 
-  async function handleLogout() {
-    try {
-      await apiRequest('/auth/logout', { method: 'POST' })
-      setIsStaff(false)
-      setApiError('')
-    } catch (error) {
-      setApiError(error.message)
-    }
+  function handleLogout() {
+    setIsStaff(false)
   }
 
   return (
@@ -159,11 +131,8 @@ function App() {
         <section className="summary-grid" aria-label="Case summary">
           <div className="summary-item"><span className="summary-label">OPEN CASES</span><strong>{String(activeCount).padStart(2, '0')}</strong><span className="summary-note">Awaiting final order</span></div>
           <div className="summary-item"><span className="summary-label">CATTLE IN CARE</span><strong>{String(totalCows).padStart(2, '0')}</strong><span className="summary-note">Across open cases</span></div>
-          <div className="summary-item summary-cost"><span className="summary-label">CURRENT CARE COST</span><strong>{money(pendingAmount)}</strong><span className="summary-note">Open cases · ₹250 / cow / day</span></div>
           <div className="summary-aside"><span className="summary-date">{currentDateLabel}</span><span>All times local</span></div>
         </section>
-
-        {apiError && <div className="api-banner" role="alert"><span>{apiError}</span><button onClick={() => window.location.reload()}>Retry</button></div>}
 
         <div className="register-layout">
           <section className="record-panel" aria-label="FIR records">
@@ -173,7 +142,7 @@ function App() {
             </div>
             <label className="search-box">
               <span aria-hidden="true" className="search-symbol">⌕</span>
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search FIR, vehicle, date, goshala…" aria-label="Search FIR number, vehicle number, date, goshala, or advocate" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search FIR, station, district, phone…" aria-label="Search FIR number, vehicle number, date, police station, district, goshala, advocate, or phone number" />
               {query && <button className="clear-search" onClick={() => setQuery('')} aria-label="Clear search">×</button>}
             </label>
             <div className="filter-tabs" aria-label="Filter by case stage">
@@ -182,17 +151,16 @@ function App() {
               ))}
             </div>
             <div className="record-list">
-              {isLoading && <div className="empty-state"><strong>Loading case records…</strong></div>}
-              {!isLoading && filteredRecords.map((record) => (
+              {filteredRecords.map((record) => (
                 <button key={record.id} className={`record-row ${selectedRecord?.id === record.id ? 'selected' : ''}`} onClick={() => setSelectedId(record.id)}>
                   <span className="record-stage">0{stageFor(record)}</span>
                   <span className="record-row-main"><strong>FIR {record.firNo}</strong><small>{record.vehicleNo} <i>·</i> {record.cowCount} cattle</small><small className="row-goshala">{record.goshalaName}</small></span>
                   <span className="record-row-date">{dateLabel(record.firDate)}</span>
                 </button>
               ))}
-              {!isLoading && !apiError && filteredRecords.length === 0 && <div className="empty-state"><span>⌕</span><strong>No case records yet</strong><small>FIR records saved by staff will appear here.</small></div>}
+              {filteredRecords.length === 0 && <div className="empty-state"><span>⌕</span><strong>No case records yet</strong><small>FIR records saved by staff will appear here.</small></div>}
             </div>
-            <div className="panel-footnote"><span className="status-dot" /> Records are stored in MongoDB</div>
+            <div className="panel-footnote"><span className="status-dot" /> Records are stored in this browser</div>
           </section>
 
           {selectedRecord ? (
@@ -216,14 +184,14 @@ function App() {
                   <div className="detail-section-title"><span className="section-kicker">01 / TRANSPORT</span><span className="section-rule" /></div>
                   <dl className="data-list">
                     <div><dt>Vehicle number</dt><dd className="mono">{selectedRecord.vehicleNo}</dd></div>
+                    {selectedRecord.vehicleOwnerName && <div><dt>Vehicle registered to</dt><dd>{selectedRecord.vehicleOwnerName}</dd></div>}
+                    {selectedRecord.driverName && <div><dt>Driver</dt><dd>{selectedRecord.driverName}</dd></div>}
+                    {selectedRecord.driverPhone && <div><dt>Driver phone</dt><dd><a href={`tel:${selectedRecord.driverPhone}`}>{selectedRecord.driverPhone}</a></dd></div>}
+                    {selectedRecord.otherPersons && <div className="note-row"><dt>Other persons in vehicle</dt><dd>{selectedRecord.otherPersons}</dd></div>}
                     <div><dt>Cattle in custody</dt><dd>{selectedRecord.cowCount} <span>cattle</span></dd></div>
                     <div><dt>Police station</dt><dd>{selectedRecord.policeStation}</dd></div>
-                    {(selectedRecord.boatName || selectedRecord.boatRegistrationNo || selectedRecord.boatOperator || selectedRecord.boatRoute) && <>
-                      {selectedRecord.boatName && <div><dt>Boat / vessel</dt><dd>{selectedRecord.boatName}</dd></div>}
-                      {selectedRecord.boatRegistrationNo && <div><dt>Boat identification</dt><dd className="mono">{selectedRecord.boatRegistrationNo}</dd></div>}
-                      {selectedRecord.boatOperator && <div><dt>Operator / captain</dt><dd>{selectedRecord.boatOperator}</dd></div>}
-                      {selectedRecord.boatRoute && <div><dt>Route / ports</dt><dd>{selectedRecord.boatRoute}</dd></div>}
-                    </>}
+                    {selectedRecord.state && <div><dt>State</dt><dd>{selectedRecord.state}</dd></div>}
+                    {selectedRecord.district && <div><dt>District</dt><dd>{selectedRecord.district}</dd></div>}
                   </dl>
                   <div className="detail-section-title section-spaced"><span className="section-kicker">02 / FIELD REPORT</span><span className="section-rule" /></div>
                   <dl className="data-list">
@@ -236,6 +204,8 @@ function App() {
                   <div className="goshala-block"><span className="mini-label">REGISTERED GOSHALA</span><strong>{selectedRecord.goshalaName}</strong><span>{selectedRecord.goshalaAddress}</span><a href={`tel:${selectedRecord.goshalaPhone}`}>{selectedRecord.goshalaPhone}</a></div>
                   <dl className="data-list order-data">
                     <div><dt>Final order date</dt><dd>{dateLabel(selectedRecord.finalOrderDate)}</dd></div>
+                    {Number(selectedRecord.finalOrderAmount || 0) > 0 && <div><dt>Amount given after final order</dt><dd>{money(Number(selectedRecord.finalOrderAmount || 0))}</dd></div>}
+                    {selectedRecord.caseWorker && <div><dt>Person working on this case</dt><dd>{selectedRecord.caseWorker}</dd></div>}
                     <div><dt>Order reference</dt><dd className="mono">{selectedRecord.orderNo || 'Not issued'}</dd></div>
                   </dl>
                   <div className="advocate-block"><span className="mini-label">CASE ADVOCATE</span><strong>{selectedRecord.advocateName}</strong><a href={`tel:${selectedRecord.advocatePhone}`}>{selectedRecord.advocatePhone}</a></div>
@@ -254,23 +224,24 @@ function App() {
         </div>
       </main>
 
-      <footer className="site-footer"><span>GAU RAKSHA <i>·</i> FIR & CUSTODY REGISTER</span><span>Case records stored in MongoDB</span></footer>
+      <footer className="site-footer"><span>GAU RAKSHA <i>·</i> FIR & CUSTODY REGISTER</span><span>Records stay on this device</span></footer>
 
       {showLogin && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setShowLogin(false)}><section className="modal-card login-card" role="dialog" aria-modal="true" aria-labelledby="login-title">
         <button className="modal-close" onClick={() => setShowLogin(false)} aria-label="Close sign in">×</button><span className="section-kicker">STAFF ACCESS</span><h2 id="login-title">Welcome back.</h2><p>Sign in to manage FIR and custody records.</p>
         <form onSubmit={handleLogin} className="modal-form"><label>Username<input name="username" autoComplete="username" required /></label><label>Password<input name="password" type="password" autoComplete="current-password" required /></label>{loginError && <span className="form-error">{loginError}</span>}<button className="button button-green full-button" type="submit">Sign in <span aria-hidden="true">→</span></button></form>
-        <p className="security-note">Staff credentials are verified by the server. Contact your administrator for access.</p>
+        <div className="demo-hint"><strong>DEMO ACCESS</strong><span>Username: admin</span><span>Password: FIR2026</span></div>
+        <p className="security-note">Demo-only access. This browser-only mode does not provide secure authentication or shared data.</p>
       </section></div>}
 
       {showEditor && <div className="modal-backdrop editor-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setShowEditor(false)}><section className="modal-card editor-card" role="dialog" aria-modal="true" aria-labelledby="editor-title">
         <div className="editor-heading"><div><span className="section-kicker">STAFF WORKSPACE</span><h2 id="editor-title">{editingRecord ? 'Update case record' : 'Register a new FIR'}</h2></div><button className="modal-close" onClick={() => setShowEditor(false)} aria-label="Close form">×</button></div>
         <form onSubmit={handleSave} className="record-form">
           <div className="form-section-label">01 <span>FIR & TRANSPORT</span></div>
-          <div className="form-grid"><label>FIR number<input name="firNo" defaultValue={editingRecord?.firNo} required placeholder="e.g. 151/2026" /></label><label>FIR date<input name="firDate" type="date" defaultValue={editingRecord?.firDate || today()} required /></label><label>Police station<input name="policeStation" defaultValue={editingRecord?.policeStation} required /></label><label>Vehicle number<input name="vehicleNo" defaultValue={editingRecord?.vehicleNo} required placeholder="RJ 00 AA 0000" /></label><label>Cattle count<input name="cowCount" type="number" min="1" defaultValue={editingRecord?.cowCount || 1} required /></label><label>Boat / vessel name <span className="optional-label">OPTIONAL</span><input name="boatName" defaultValue={editingRecord?.boatName} placeholder="If transported by boat" /></label><label>Boat identification <span className="optional-label">OPTIONAL</span><input name="boatRegistrationNo" defaultValue={editingRecord?.boatRegistrationNo} placeholder="Registration or ID number" /></label><label>Operator / captain <span className="optional-label">OPTIONAL</span><input name="boatOperator" defaultValue={editingRecord?.boatOperator} /></label><label className="span-two">Boat route / ports <span className="optional-label">OPTIONAL</span><input name="boatRoute" defaultValue={editingRecord?.boatRoute} placeholder="Departure and arrival locations" /></label></div>
+          <div className="form-grid"><label>FIR number<input name="firNo" defaultValue={editingRecord?.firNo} required placeholder="e.g. 151/2026" /></label><label>FIR date<input name="firDate" type="date" defaultValue={editingRecord?.firDate || today()} required /></label><label>Police station<input name="policeStation" defaultValue={editingRecord?.policeStation} required /></label><label>State <span className="optional-label">OPTIONAL</span><input name="state" defaultValue={editingRecord?.state} placeholder="State" /></label><label>District <span className="optional-label">OPTIONAL</span><input name="district" defaultValue={editingRecord?.district} placeholder="District" /></label><label>Vehicle number<input name="vehicleNo" defaultValue={editingRecord?.vehicleNo} required placeholder="RJ 00 AA 0000" /></label><label>Registered vehicle owner <span className="optional-label">OPTIONAL</span><input name="vehicleOwnerName" defaultValue={editingRecord?.vehicleOwnerName} /></label><label>Driver name <span className="optional-label">OPTIONAL</span><input name="driverName" defaultValue={editingRecord?.driverName} /></label><label>Driver phone <span className="optional-label">OPTIONAL</span><input name="driverPhone" type="tel" defaultValue={editingRecord?.driverPhone} /></label><label className="span-two">Other persons in vehicle <span className="optional-label">OPTIONAL</span><textarea name="otherPersons" rows="2" defaultValue={editingRecord?.otherPersons} placeholder="Names of other occupants, separated by commas" /></label><label>Cattle count<input name="cowCount" type="number" min="1" defaultValue={editingRecord?.cowCount || 1} required /></label></div>
           <div className="form-section-label">02 <span>FIELD REPORT</span></div>
           <div className="form-grid"><label>Inspection date<input name="fieldDate" type="date" defaultValue={editingRecord?.fieldDate} /></label><label className="span-two">Field note<textarea name="fieldNote" rows="2" defaultValue={editingRecord?.fieldNote} placeholder="Inspection findings, veterinary report…" /></label></div>
           <div className="form-section-label">03 <span>GOSHALA & FINAL ORDER</span></div>
-          <div className="form-grid"><label>Goshala name<input name="goshalaName" defaultValue={editingRecord?.goshalaName} required /></label><label>Goshala phone<input name="goshalaPhone" type="tel" defaultValue={editingRecord?.goshalaPhone} required /></label><label className="span-two">Goshala address<input name="goshalaAddress" defaultValue={editingRecord?.goshalaAddress} required /></label><label>Advocate name<input name="advocateName" defaultValue={editingRecord?.advocateName} required /></label><label>Advocate phone<input name="advocatePhone" type="tel" defaultValue={editingRecord?.advocatePhone} required /></label><label>Final order date<input name="finalOrderDate" type="date" defaultValue={editingRecord?.finalOrderDate} /></label><label>Order reference<input name="orderNo" defaultValue={editingRecord?.orderNo} placeholder="Optional until issued" /></label></div>
+          <div className="form-grid"><label>Goshala name<input name="goshalaName" defaultValue={editingRecord?.goshalaName} required /></label><label>Goshala phone<input name="goshalaPhone" type="tel" defaultValue={editingRecord?.goshalaPhone} required /></label><label className="span-two">Goshala address<input name="goshalaAddress" defaultValue={editingRecord?.goshalaAddress} required /></label><label>Advocate name<input name="advocateName" defaultValue={editingRecord?.advocateName} required /></label><label>Advocate phone<input name="advocatePhone" type="tel" defaultValue={editingRecord?.advocatePhone} required /></label><label>Person working on that case <span className="optional-label">OPTIONAL</span><input name="caseWorker" defaultValue={editingRecord?.caseWorker} placeholder="Staff or volunteer name" /></label><label>Final order date<input name="finalOrderDate" type="date" defaultValue={editingRecord?.finalOrderDate} /></label><label>Amount given after final order <span className="optional-label">OPTIONAL</span><input name="finalOrderAmount" type="number" min="0" step="0.01" defaultValue={editingRecord?.finalOrderAmount || ''} placeholder="e.g. 25000" /></label><label>Order reference<input name="orderNo" defaultValue={editingRecord?.orderNo} placeholder="Optional until issued" /></label></div>
           <div className="form-footer"><span>Care amount is calculated automatically at ₹250 / cow / day.</span><div><button type="button" className="button button-outline" onClick={() => setShowEditor(false)}>Cancel</button><button type="submit" className="button button-green">{editingRecord ? 'Save changes' : 'Create record'}</button></div></div>
         </form>
       </section></div>}

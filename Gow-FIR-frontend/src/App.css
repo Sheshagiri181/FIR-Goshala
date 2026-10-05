@@ -171,8 +171,6 @@
 .empty-state > span { color: #8d9986; font: 30px Georgia, serif; }
 .empty-state strong { color: #4d574b; font: 700 13px var(--display); }
 .empty-state small { max-width: 200px; color: #92948c; font-size: 10px; line-height: 1.5; }
-.api-banner { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: -12px 0 18px; padding: 10px 13px; border: 1px solid #e7cbbf; background: #fff8f4; color: #8b4d3b; font-size: 11px; }
-.api-banner button { flex: 0 0 auto; border: 0; background: transparent; color: #8b4d3b; font: 700 11px var(--sans); text-decoration: underline; cursor: pointer; }
 
 .site-footer { display: flex; justify-content: space-between; gap: 20px; padding: 18px clamp(22px, 5.2vw, 84px); border-top: 1px solid var(--line); color: #92938b; font-size: 9px; letter-spacing: .65px; }
 .site-footer i { padding: 0 3px; color: #bd8b58; font-style: normal; }
@@ -188,6 +186,8 @@
 .modal-form input:focus,.record-form input:focus,.record-form textarea:focus { border-color: #779079; box-shadow: 0 0 0 2px #e7efe7; }
 .full-button { width: 100%; margin-top: 4px; }
 .full-button span { margin-left: auto; }
+.demo-hint { display: flex; flex-direction: column; gap: 3px; margin-top: 18px; padding: 11px 12px; background: #f5f7f1; color: #66705f; font-size: 10px; }
+.demo-hint strong { margin-bottom: 2px; font-size: 8px; letter-spacing: .9px; }
 .security-note { margin-top: 13px; color: #a0a097 !important; font-size: 9px !important; line-height: 1.45; }
 .form-error { color: #aa493b; font-size: 10px; }
 .editor-backdrop { overflow-y: auto; place-items: start center; }
